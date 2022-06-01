@@ -10,7 +10,6 @@ class SOM:
         t_alpha=25,
         sigma0=2,
         t_sigma=25,
-        attribNum=2,
         weights=None,
         scale=True,
         history=False,
@@ -23,74 +22,142 @@ class SOM:
         self.allowScale = scale
         self.allowHistory = history
 
-        self.weights = weights
-        self.n_points = weights.shape[0]
-        self.attributeNumber = weights.shape[1]
+        if weights is None:
+            self.weights = torch.rand((500, 2), dtype=torch.double)
 
-    def fit(self, X, epochs):
+        else:
+            self.weights = weights
+
+        self.n_points = self.weights.shape[0]
+        self.attributeNumber = self.weights.shape[1]
+
+        self.params = {
+            "n_points": 500,
+            "alpha0": 0.5,
+            "t_alpha": 25,
+            "sigma0": 2,
+            "t_sigma": 25,
+            "epochs": 300,
+            "seed": 124,
+            "scale": True,
+            "shuffle": True,
+            "history": True,
+        }
+
+    def fit_old(self, X):
         n_samples, n_attributes = X.shape
+
+        # Initialize the points randomly (weights)
+        self.W = torch.rand((self.params["n_points"], n_attributes), dtype=torch.double)
 
         # From numpy conversion
         X = torch.from_numpy(X).type(torch.double)
 
+        # Shuffling
+        if self.params["shuffle"]:
+            indices = torch.randperm(n_samples)
+            X = X[indices, :]
+
         # Scaling W in the same range as X
-        if self.allowScale:
-            self.weights = self.weights * (torch.max(X) - torch.min(X)) + torch.min(X)
+        if self.params["scale"]:
+            self.W = self.W * (torch.max(X) - torch.min(X)) + torch.min(X)
 
         # Record each W for each t (debugging)
-        if self.allowHistory:
-            self.history = self.weights.reshape(1, self.n_points, self.attributeNumber)
+        if self.params["history"]:
+            self.history = self.W.reshape(1, self.params["n_points"], n_attributes)
 
         # The training loop
-        for t in trange(epochs):
+        for t in trange(self.params["epochs"]):
             x = X[t % n_samples, :]  # The current sampled x
-            x_dists = x - self.weights  # Distances from x to W
+            x_dists = x - self.W  # Distances from x to W
 
             # Find the winning point
             distances = torch.pow((x_dists), 2).sum(axis=1)  # [n_points x 1]
-            minDistance = torch.argmin(distances)
+            winner = torch.argmin(distances)
 
             # Lateral distance between neurons
-            lateralDistance = torch.pow((self.weights - self.weights[minDistance, :]), 2).sum(
+            lat_dist = torch.pow((self.W - self.W[winner, :]), 2).sum(
                 axis=1
             )  # [n_points x 1]
 
             # Update the learning rate
-            alpha = self.alpha * exp(-t / self.t_alpha)  # [scalar]
+            alpha = self.params["alpha0"] * exp(-t / self.params["t_alpha"])  # [scalar]
 
             # Update the neighborhood size
-            sigma = self.sigma * exp(-t / self.t_sigma)  # [scalar]
+            sigma = self.params["sigma0"] * exp(-t / self.params["t_sigma"])  # [scalar]
 
             # Evaluate the topological neighborhood
-            h = torch.exp(-lateralDistance / (2 * sigma**2)).reshape(
-                (self.n_points, 1)
+            h = torch.exp(-lat_dist / (2 * sigma**2)).reshape(
+                (self.params["n_points"], 1)
             )  # [n_points x 1]
 
             # Update W
-            self.weights += alpha * h * (x_dists)
+            self.W += alpha * h * (x_dists)
 
-            if self.allowHistory:
+            if self.params["history"]:
                 self.history = torch.cat(
                     (
                         self.history,
-                        self.weights.reshape(1, self.n_points, self.attributeNumber),
+                        self.W.reshape(1, self.params["n_points"], n_attributes),
                     ),
                     axis=0,
                 )
 
-    def adjacency_matrix(self, M):
-        M = torch.from_numpy(M)
-        n_samples, n_attributes = M.shape
+    def fit(self, input, epochs):
+        n_samples, n_attributes = X.shape
 
-        # Broadcast the M matrix to a tensor of the shape
-        # (n_sample, (n_samples, n_attributes))
+        # Initialize the points randomly (weights)
+        self.W = torch.rand((self.params["n_points"], n_attributes), dtype=torch.double)
 
-        tensor = M.repeat(n_samples, 1, 1)  # Make n_samples copy of M
-        M_flat = M.reshape(
-            n_samples, 1, n_attributes
-        )  # Each row of M or each copy in tensor
-        distances = torch.pow((tensor - M_flat), 2).sum(axis=2).sqrt()
-        return distances
+        # From numpy conversion
+        X = torch.from_numpy(X).type(torch.double)
 
-    def get_weights(self):
-        return self.weights
+        # Shuffling
+        if self.params["shuffle"]:
+            indices = torch.randperm(n_samples)
+            X = X[indices, :]
+
+        # Scaling W in the same range as X
+        if self.params["scale"]:
+            self.W = self.W * (torch.max(X) - torch.min(X)) + torch.min(X)
+
+        # Record each W for each t (debugging)
+        if self.params["history"]:
+            self.history = self.W.reshape(1, self.params["n_points"], n_attributes)
+
+        # The training loop
+        for t in trange(self.params["epochs"]):
+            x = X[t % n_samples, :]  # The current sampled x
+            x_dists = x - self.W  # Distances from x to W
+
+            # Find the winning point
+            distances = torch.pow((x_dists), 2).sum(axis=1)  # [n_points x 1]
+            winner = torch.argmin(distances)
+
+            # Lateral distance between neurons
+            lateralDistance = torch.pow((self.W - self.W[winner, :]), 2).sum(
+                axis=1
+            )  # [n_points x 1]
+
+            # Update the learning rate
+            alpha = self.params["alpha0"] * exp(-t / self.params["t_alpha"])  # [scalar]
+
+            # Update the neighborhood size
+            sigma = self.params["sigma0"] * exp(-t / self.params["t_sigma"])  # [scalar]
+
+            # Evaluate the topological neighborhood
+            h = torch.exp(-lateralDistance / (2 * sigma**2)).reshape(
+                (self.params["n_points"], 1)
+            )  # [n_points x 1]
+
+            # Update W
+            self.W += alpha * h * (x_dists)
+
+            if self.params["history"]:
+                self.history = torch.cat(
+                    (
+                        self.history,
+                        self.W.reshape(1, self.params["n_points"], n_attributes),
+                    ),
+                    axis=0,
+                )
