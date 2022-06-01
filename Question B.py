@@ -6,9 +6,10 @@ from som.mapping import SOM
 
 
 SHOW_HISTORY = False
+HISTORY_STEPSIZE = 10
 SHOW_OUTPUT = True
 
-USE_EXAMPLE_DATA = True
+USE_EXAMPLE_DATA = False
 
 
 x = np.linspace(0, 1, 100)
@@ -47,13 +48,11 @@ model = SOM(
 )
 
 
-model = SOM()
-# model.fit_old(data)
 model.fit(data,500)
 
 
 if SHOW_OUTPUT:
-    weights = model.weights
+    weights = model.W
 
     fig, ax = plt.subplots()
     fig.suptitle("Train set (PCA-reduced) and weights")
@@ -70,7 +69,7 @@ if SHOW_HISTORY:
     # Plot the train dataset and the weights
     historyNum = model.history.shape[0]
 
-    for historyIndex in range(historyNum):
+    for historyIndex in range(0,historyNum,HISTORY_STEPSIZE):
         weights = model.history[historyIndex, :, :]
 
         fig, ax = plt.subplots()
