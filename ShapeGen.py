@@ -30,8 +30,8 @@ class Rectangle():
     def DecidePoint(self,point):
         isOk = True
 
-        isOk = isOk and point[0] > self._point_1[0] and point[0] < self._point_2[0]
-        isOk = isOk and point[1] > self._point_1[1] and point[1] < self._point_2[1]
+        isOk = isOk and point[0] >= self._point_1[0] and point[0] <= self._point_2[0]
+        isOk = isOk and point[1] >= self._point_1[1] and point[1] <= self._point_2[1]
 
         return isOk
 
@@ -43,13 +43,12 @@ class ShapeGen():
 
     def DecidePoint(self,point):
 
-        pointIsOk: bool = True
+        pointIsOk: bool = False
 
         for shape in self._shapes:
-            pointIsOk = pointIsOk and shape.DecidePoint(point)
-            if pointIsOk is False: return False
+            pointIsOk = pointIsOk or shape.DecidePoint(point)
 
-        return True
+        return pointIsOk
 
     def FilterPoints(self, points):
         outpoints = []

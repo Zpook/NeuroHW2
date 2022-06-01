@@ -36,7 +36,7 @@ class SOM:
         n_samples, n_attributes = X.shape
 
         # Initialize the points randomly (weights)
-        self.W = torch.rand((self.n_points, n_attributes), dtype=torch.double)
+        self.weights = torch.rand((self.n_points, n_attributes), dtype=torch.double)
 
         # From numpy conversion
         X = torch.from_numpy(X).type(torch.double)
@@ -48,23 +48,23 @@ class SOM:
 
         # Scaling W in the same range as X
         if self.allowScale:
-            self.W = self.W * (torch.max(X) - torch.min(X)) + torch.min(X)
+            self.weights = self.weights * (torch.max(X) - torch.min(X)) + torch.min(X)
 
         # Record each W for each t (debugging)
         if self.allowHistory:
-            self.history = self.W.reshape(1, self.n_points, n_attributes)
+            self.history = self.weights.reshape(1, self.n_points, n_attributes)
 
         # The training loop
         for t in trange(epochs):
             x = X[t % n_samples, :]  # The current sampled x
-            x_dists = x - self.W  # Distances from x to W
+            x_dists = x - self.weights  # Distances from x to W
 
             # Find the winning point
             distances = torch.pow((x_dists), 2).sum(axis=1)  # [n_points x 1]
             winner = torch.argmin(distances)
 
             # Lateral distance between neurons
-            lat_dist = torch.pow((self.W - self.W[winner, :]), 2).sum(
+            lat_dist = torch.pow((self.weights - self.weights[winner, :]), 2).sum(
                 axis=1
             )  # [n_points x 1]
 
@@ -80,13 +80,13 @@ class SOM:
             )  # [n_points x 1]
 
             # Update W
-            self.W += alpha * h * (x_dists)
+            self.weights += alpha * h * (x_dists)
 
             if self.allowHistory:
                 self.history = torch.cat(
                     (
                         self.history,
-                        self.W.reshape(1, self.n_points, n_attributes),
+                        self.weights.reshape(1, self.n_points, n_attributes),
                     ),
                     axis=0,
                 )
