@@ -17,9 +17,9 @@ class SOM:
     ):
 
         self.alpha = alpha0
-        self.t_alpha = t_alpha
+        self.alphaMaxTime = t_alpha
         self.sigma = sigma0
-        self.t_sigma = t_sigma
+        self.sigmaMaxTime = t_sigma
         self.allowScale = scale
         self.allowHistory = history
         self.allowShuffle = shuffle
@@ -32,11 +32,25 @@ class SOM:
         self.attributeNumber = self.weights.shape[1]
 
 
+        # Initialize the points randomly (weights)
+        # self.weights = torch.rand((self.n_points, n_attributes), dtype=torch.double)
+
+    def ScalarUpdate_Power(self, value, currentTime, maxTime):
+        return value * exp(-currentTime / maxTime)
+
+    def ScalarUpdate_Linear(self, value, currentTime):
+        return value / (currentTime+1)
+
+    def Neighbourhood_Gaussian(self, lateralDistances, sigma):
+        return torch.exp(-lateralDistances / (2 * sigma**2)).reshape(
+            (self.n_points, 1)
+        )
+
+    def GetNeihbourhoodRank(self,BMU):
+        return 0
+
     def fit(self, input, epochs):
         n_samples, n_attributes = input.shape
-
-        # Initialize the points randomly (weights)
-        self.weights = torch.rand((self.n_points, n_attributes), dtype=torch.double)
 
         # From numpy conversion
         input = torch.from_numpy(input).type(torch.double)
@@ -48,39 +62,45 @@ class SOM:
 
         # Scaling W in the same range as X
         if self.allowScale:
-            self.weights = self.weights * (torch.max(input) - torch.min(input)) + torch.min(input)
+            self.weights = self.weights * (
+                torch.max(input) - torch.min(input)
+            ) + torch.min(input)
 
         # Record each W for each t (debugging)
         if self.allowHistory:
             self.history = self.weights.reshape(1, self.n_points, n_attributes)
 
         # The training loop
-        for t in trange(epochs):
-            sample = input[t % n_samples, :]  # The current sampled x
-            distances = sample - self.weights  # Distances from x to W
+        for epochIndex in trange(epochs):
+            sample = input[epochIndex % n_samples, :]
+            distances = sample - self.weights
 
             # Find the winning point
-            euclideanDistances = torch.pow((distances), 2).sum(axis=1)  # [n_points x 1]
-            winner = torch.argmin(euclideanDistances)
+            euclideanDistances = torch.pow((distances), 2).sum(axis=1)
+            BMUIndex = torch.argmin(euclideanDistances)
+            BMU = self.weights[BMUIndex]
 
             # Lateral distance between neurons
-            lateralDistances = torch.pow((self.weights - self.weights[winner, :]), 2).sum(
-                axis=1
-            )  # [n_points x 1]
+            lateralDistances = torch.pow(
+                (self.weights - BMU), 2
+            ).sum(axis=1)
 
             # Update the learning rate
-            alpha = self.alpha * exp(-t / self.t_alpha)  # [scalar]
+            # alpha = self.ScalarUpdate_Power(self.alpha, epochIndex, self.alphaMaxTime)
+            alpha = self.ScalarUpdate_Linear(self.alpha, epochIndex)
+
 
             # Update the neighborhood size
-            sigma = self.sigma * exp(-t / self.t_sigma)  # [scalar]
+            # sigma = self.ScalarUpdate_Power(self.sigma, epochIndex, self.sigmaMaxTime)
+            sigma = self.ScalarUpdate_Linear(self.sigma, epochIndex)
+
 
             # Evaluate the topological neighborhood
-            h = torch.exp(-lateralDistances / (2 * sigma**2)).reshape(
-                (self.n_points, 1)
-            )  # [n_points x 1]
+            changeRate = self.Neighbourhood_Gaussian(lateralDistances,sigma)
+            # changeRate = self.Neighbourhood_Linear(lateralDistances,BMU)
 
-            # Update W
-            self.weights += alpha * h * (distances)
+            # Update weights
+            self.weights += alpha * changeRate * (distances)
 
             if self.allowHistory:
                 self.history = torch.cat(

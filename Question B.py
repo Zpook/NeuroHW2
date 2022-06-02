@@ -42,6 +42,7 @@ XX, YY = np.meshgrid(x, y)
 weights = np.vstack([XX.reshape(-1), YY.reshape(-1)]).transpose()
 weights = torch.tensor(weights)
 
+gridCoords = weights.reshape(15,15,2)
 
 if USE_EXAMPLE_DATA:
 
@@ -56,10 +57,10 @@ if USE_EXAMPLE_DATA:
 
 
 model = SOM(
-    alpha0=0.05,
+    alpha0=0.1,
     t_alpha=5000,
     sigma0=0.1,
-    t_sigma=5000,
+    t_sigma=1000,
     weights=weights,
     scale=True,
     history=True,
