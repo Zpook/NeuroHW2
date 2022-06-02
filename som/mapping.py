@@ -38,16 +38,11 @@ class SOM:
     def ScalarUpdate_Power(self, value, currentTime, maxTime):
         return value * exp(-currentTime / maxTime)
 
-    def ScalarUpdate_Linear(self, value, currentTime):
-        return value / (currentTime+1)
-
     def Neighbourhood_Gaussian(self, lateralDistances, sigma):
         return torch.exp(-lateralDistances / (2 * sigma**2)).reshape(
             (self.n_points, 1)
         )
 
-    def GetNeihbourhoodRank(self,BMU):
-        return 0
 
     def fit(self, input, epochs):
         n_samples, n_attributes = input.shape
@@ -86,18 +81,19 @@ class SOM:
             ).sum(axis=1)
 
             # Update the learning rate
-            # alpha = self.ScalarUpdate_Power(self.alpha, epochIndex, self.alphaMaxTime)
-            alpha = self.ScalarUpdate_Linear(self.alpha, epochIndex)
+            alpha = self.ScalarUpdate_Power(self.alpha, epochIndex, self.alphaMaxTime)
 
 
             # Update the neighborhood size
-            # sigma = self.ScalarUpdate_Power(self.sigma, epochIndex, self.sigmaMaxTime)
-            sigma = self.ScalarUpdate_Linear(self.sigma, epochIndex)
+            sigma = self.ScalarUpdate_Power(self.sigma, epochIndex, self.sigmaMaxTime)
 
 
             # Evaluate the topological neighborhood
             changeRate = self.Neighbourhood_Gaussian(lateralDistances,sigma)
-            # changeRate = self.Neighbourhood_Linear(lateralDistances,BMU)
+
+            maxChange = 0.15
+            changeRate[changeRate>maxChange] = maxChange
+            changeRate[BMUIndex] = 1
 
             # Update weights
             self.weights += alpha * changeRate * (distances)

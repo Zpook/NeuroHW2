@@ -8,11 +8,17 @@ from som.mapping import SOM
 
 
 SHOW_HISTORY = False
-HISTORY_STEPSIZE = 100
+HISTORY_STEPSIZE = 1
 SHOW_OUTPUT = True
 SHOW_INPUT = False
 
 USE_EXAMPLE_DATA = False
+
+EPOCHS = 5000
+ALPHA_SCALE = 1
+SIGMA_SCALE = 1
+ALPHA = 0.2
+SIGMA = 0.085
 
 
 x = np.linspace(0, 1, 50)
@@ -22,14 +28,14 @@ XX, YY = np.meshgrid(x, y)
 data = np.vstack([XX.reshape(-1), YY.reshape(-1)]).transpose()
 
 
-palmShape = Rectangle((0.15,0.15),(0.85,0.35))
-finger1 = Rectangle((0.15,0.25),(0.25,0.65))
-finger2 = Rectangle((0.35,0.35),(0.45,0.75))
-finger3 = Rectangle((0.55,0.35),(0.65,0.85))
-finger4 = Rectangle((0.75,0.35),(0.85,0.75))
+palmShape = Rectangle((0.15, 0.15), (0.85, 0.35))
+finger1 = Rectangle((0.15, 0.25), (0.25, 0.65))
+finger2 = Rectangle((0.35, 0.35), (0.45, 0.75))
+finger3 = Rectangle((0.55, 0.35), (0.65, 0.85))
+finger4 = Rectangle((0.75, 0.35), (0.85, 0.75))
 
 # allShapes = [palmShape]
-allShapes = [palmShape,finger1,finger2,finger3,finger4]
+allShapes = [palmShape, finger1, finger2, finger3, finger4]
 
 shapeFilter = ShapeGen(allShapes)
 
@@ -42,7 +48,7 @@ XX, YY = np.meshgrid(x, y)
 weights = np.vstack([XX.reshape(-1), YY.reshape(-1)]).transpose()
 weights = torch.tensor(weights)
 
-gridCoords = weights.reshape(15,15,2)
+gridCoords = weights.reshape(15, 15, 2)
 
 if USE_EXAMPLE_DATA:
 
@@ -57,29 +63,44 @@ if USE_EXAMPLE_DATA:
 
 
 model = SOM(
-    alpha0=0.1,
-    t_alpha=5000,
-    sigma0=0.1,
-    t_sigma=1000,
+    alpha0=ALPHA,
+    t_alpha=ALPHA_SCALE * EPOCHS,
+    sigma0=SIGMA,
+    t_sigma=SIGMA_SCALE * EPOCHS,
     weights=weights,
     scale=True,
     history=True,
+    shuffle=True,
 )
 
-model.fit(data,5000)
-
-if SHOW_OUTPUT:
+if SHOW_INPUT:
     weights = model.weights
 
     fig, ax = plt.subplots()
-    fig.suptitle("Train set (PCA-reduced) and weights")
+    fig.suptitle("Input set and weights")
 
     t = ax.scatter(data[:, 0], data[:, 1])
     w = ax.scatter(weights[:, 0], weights[:, 1])
 
     fig.legend((t, w), ("Train", "Weights"))
-    plt.xlim((0,1))
-    plt.ylim((0,1))
+    plt.xlim((0, 1))
+    plt.ylim((0, 1))
+    plt.show()
+
+model.fit(data, EPOCHS)
+
+if SHOW_OUTPUT:
+    weights = model.weights
+
+    fig, ax = plt.subplots()
+    fig.suptitle("Train set and weights")
+
+    t = ax.scatter(data[:, 0], data[:, 1])
+    w = ax.scatter(weights[:, 0], weights[:, 1])
+
+    fig.legend((t, w), ("Train", "Weights"))
+    plt.xlim((0, 1))
+    plt.ylim((0, 1))
     plt.show()
 
 
@@ -88,16 +109,16 @@ if SHOW_HISTORY:
     # Plot the train dataset and the weights
     historyNum = model.history.shape[0]
 
-    for historyIndex in range(0,historyNum,HISTORY_STEPSIZE):
+    for historyIndex in range(0, historyNum, HISTORY_STEPSIZE):
         weights = model.history[historyIndex, :, :]
 
         fig, ax = plt.subplots()
-        fig.suptitle("Train set (PCA-reduced) and weights")
+        fig.suptitle("Train set and weights")
 
         t = ax.scatter(data[:, 0], data[:, 1])
         w = ax.scatter(weights[:, 0], weights[:, 1])
 
         fig.legend((t, w), ("Train", "Weights"))
-        plt.xlim((0,1))
-        plt.ylim((0,1))
+        plt.xlim((0, 1))
+        plt.ylim((0, 1))
         plt.show()
