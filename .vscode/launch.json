@@ -13,10 +13,18 @@
             "justMyCode": true
         },
         {
-            "name": "Question B",
+            "name": "Question B1",
             "type": "python",
             "request": "launch",
             "program": "Question B.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Question B2",
+            "type": "python",
+            "request": "launch",
+            "program": "Question B2.py",
             "console": "integratedTerminal",
             "justMyCode": true
         }
