@@ -32,23 +32,23 @@ class SOM:
         self.attributeNumber = self.weights.shape[1]
 
 
-    def fit(self, X, epochs):
-        n_samples, n_attributes = X.shape
+    def fit(self, input, epochs):
+        n_samples, n_attributes = input.shape
 
         # Initialize the points randomly (weights)
         self.weights = torch.rand((self.n_points, n_attributes), dtype=torch.double)
 
         # From numpy conversion
-        X = torch.from_numpy(X).type(torch.double)
+        input = torch.from_numpy(input).type(torch.double)
 
         # Shuffling
         if self.allowShuffle:
             indices = torch.randperm(n_samples)
-            X = X[indices, :]
+            input = input[indices, :]
 
         # Scaling W in the same range as X
         if self.allowScale:
-            self.weights = self.weights * (torch.max(X) - torch.min(X)) + torch.min(X)
+            self.weights = self.weights * (torch.max(input) - torch.min(input)) + torch.min(input)
 
         # Record each W for each t (debugging)
         if self.allowHistory:
@@ -56,15 +56,15 @@ class SOM:
 
         # The training loop
         for t in trange(epochs):
-            x = X[t % n_samples, :]  # The current sampled x
-            x_dists = x - self.weights  # Distances from x to W
+            sample = input[t % n_samples, :]  # The current sampled x
+            distances = sample - self.weights  # Distances from x to W
 
             # Find the winning point
-            distances = torch.pow((x_dists), 2).sum(axis=1)  # [n_points x 1]
-            winner = torch.argmin(distances)
+            euclideanDistances = torch.pow((distances), 2).sum(axis=1)  # [n_points x 1]
+            winner = torch.argmin(euclideanDistances)
 
             # Lateral distance between neurons
-            lat_dist = torch.pow((self.weights - self.weights[winner, :]), 2).sum(
+            lateralDistances = torch.pow((self.weights - self.weights[winner, :]), 2).sum(
                 axis=1
             )  # [n_points x 1]
 
@@ -75,12 +75,12 @@ class SOM:
             sigma = self.sigma * exp(-t / self.t_sigma)  # [scalar]
 
             # Evaluate the topological neighborhood
-            h = torch.exp(-lat_dist / (2 * sigma**2)).reshape(
+            h = torch.exp(-lateralDistances / (2 * sigma**2)).reshape(
                 (self.n_points, 1)
             )  # [n_points x 1]
 
             # Update W
-            self.weights += alpha * h * (x_dists)
+            self.weights += alpha * h * (distances)
 
             if self.allowHistory:
                 self.history = torch.cat(
