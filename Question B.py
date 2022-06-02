@@ -58,7 +58,7 @@ if USE_EXAMPLE_DATA:
 model = SOM(
     alpha0=0.05,
     t_alpha=5000,
-    sigma0=0.05,
+    sigma0=0.1,
     t_sigma=5000,
     weights=weights,
     scale=True,
