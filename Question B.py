@@ -7,7 +7,7 @@ from ShapeGen import Rectangle, ShapeGen
 from som.mapping import SOM
 
 
-SHOW_HISTORY = False
+SHOW_HISTORY = True
 HISTORY_STEPSIZE = 500
 SHOW_OUTPUT = True
 SHOW_INPUT = False
