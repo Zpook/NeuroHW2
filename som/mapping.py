@@ -2,6 +2,8 @@ import torch
 import numpy as np
 from math import exp
 from tqdm import trange
+import matplotlib.pyplot as plt
+
 
 
 class SOM:
@@ -36,8 +38,8 @@ class SOM:
 
 
     def _GenerateUnitGrid(self):
-        x = np.linspace(0, 1, self.gridShape[0])
-        y = np.linspace(0, 1, self.gridShape[1])
+        x = np.arange(self.gridShape[0])
+        y = np.arange(self.gridShape[1])
         XX, YY = np.meshgrid(x, y)
 
         unitGrid = np.vstack([XX.reshape(-1), YY.reshape(-1)]).transpose().reshape(self.gridShape[0],self.gridShape[1],self.nFeatures)
@@ -52,7 +54,8 @@ class SOM:
         
         distanceMatrix = torch.zeros(self.gridShape)
 
-        distanceMatrix = (self._unitGrid - torch.Tensor(BMUGridCoords)).sum(axis=2)
+        distanceMatrix = torch.abs((self._unitGrid - torch.Tensor(BMUGridCoords)))
+        distanceMatrix = distanceMatrix.sum(axis=2)
         distanceMatrix = torch.pow(distanceMatrix,2)
 
         return torch.exp(-distanceMatrix / (2 * sigma**2)).reshape(
