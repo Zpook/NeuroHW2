@@ -14,15 +14,17 @@ SHOW_INPUT = False
 
 USE_EXAMPLE_DATA = False
 
+GRID_SHAPE = (15, 15)
+INPUT_DIM = 50
 EPOCHS = 5000
 ALPHA_SCALE = 1
 SIGMA_SCALE = 1
-ALPHA = 0.2
-SIGMA = 0.085
+ALPHA = 0.75
+SIGMA = 0.15
 
 
-x = np.linspace(0, 1, 50)
-y = np.linspace(0, 1, 50)
+x = np.linspace(0, 1, INPUT_DIM)
+y = np.linspace(0, 1, INPUT_DIM)
 XX, YY = np.meshgrid(x, y)
 
 data = np.vstack([XX.reshape(-1), YY.reshape(-1)]).transpose()
@@ -40,8 +42,8 @@ shapeFilter = ShapeGen(allShapes)
 
 data = np.array(shapeFilter.FilterPoints(data))
 
-x = np.linspace(0, 1, 15)
-y = np.linspace(0, 1, 15)
+x = np.linspace(0, 1, GRID_SHAPE[0])
+y = np.linspace(0, 1, GRID_SHAPE[1])
 XX, YY = np.meshgrid(x, y)
 
 weights = np.vstack([XX.reshape(-1), YY.reshape(-1)]).transpose()
@@ -61,11 +63,13 @@ if USE_EXAMPLE_DATA:
 
 
 model = SOM(
+    nFeatures=2,
+    gridShape=GRID_SHAPE,
+    weights=weights,
     alpha0=ALPHA,
     t_alpha=ALPHA_SCALE * EPOCHS,
     sigma0=SIGMA,
     t_sigma=SIGMA_SCALE * EPOCHS,
-    weights=weights,
     scale=True,
     history=True,
     shuffle=True,
@@ -121,4 +125,4 @@ if SHOW_HISTORY:
         plt.ylim((0, 1))
         plt.show()
 
-torch.save(model.weights,"./model.pt")
+torch.save(model.weights, "./model.pt")

@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from math import exp
 from tqdm import trange
 
@@ -6,15 +7,24 @@ from tqdm import trange
 class SOM:
     def __init__(
         self,
+        nFeatures,
+        gridShape,
+        weights,
         alpha0=0.5,
         t_alpha=25,
         sigma0=2,
         t_sigma=25,
-        weights=None,
         scale=True,
         history=True,
         shuffle=True,
     ):
+
+        self.nFeatures = nFeatures
+        self.gridShape = gridShape
+        self.weights = weights
+        self.nWeights = self.weights.shape[0]
+
+        self._unitGrid = self._GenerateUnitGrid()
 
         self.alpha = alpha0
         self.alphaMaxTime = t_alpha
@@ -24,23 +34,29 @@ class SOM:
         self.allowHistory = history
         self.allowShuffle = shuffle
 
-        if weights is None:
-            raise Exception("Weights not set")
 
-        self.weights = weights
-        self.n_points = self.weights.shape[0]
-        self.attributeNumber = self.weights.shape[1]
+    def _GenerateUnitGrid(self):
+        x = np.linspace(0, 1, self.gridShape[0])
+        y = np.linspace(0, 1, self.gridShape[1])
+        XX, YY = np.meshgrid(x, y)
 
+        unitGrid = np.vstack([XX.reshape(-1), YY.reshape(-1)]).transpose().reshape(self.gridShape[0],self.gridShape[1],self.nFeatures)
+        unitGrid = torch.tensor(unitGrid)
 
-        # Initialize the points randomly (weights)
-        # self.weights = torch.rand((self.n_points, n_attributes), dtype=torch.double)
+        return unitGrid
 
-    def ScalarUpdate_Power(self, value, currentTime, maxTime):
+    def ScalarUpdate(self, value, currentTime, maxTime):
         return value * exp(-currentTime / maxTime)
 
-    def Neighbourhood_Gaussian(self, lateralDistances, sigma):
-        return torch.exp(-lateralDistances / (2 * sigma**2)).reshape(
-            (self.n_points, 1)
+    def GuassianNeighbourhood(self, BMUGridCoords, sigma):
+        
+        distanceMatrix = torch.zeros(self.gridShape)
+
+        distanceMatrix = (self._unitGrid - torch.Tensor(BMUGridCoords)).sum(axis=2)
+        distanceMatrix = torch.pow(distanceMatrix,2)
+
+        return torch.exp(-distanceMatrix / (2 * sigma**2)).reshape(
+            (self.nWeights, 1)
         )
 
 
@@ -63,7 +79,7 @@ class SOM:
 
         # Record each W for each t (debugging)
         if self.allowHistory:
-            self.history = self.weights.reshape(1, self.n_points, n_attributes)
+            self.history = self.weights.reshape(1, self.nWeights, n_attributes)
 
         # The training loop
         for epochIndex in trange(epochs):
@@ -73,23 +89,16 @@ class SOM:
             # Find the winning point
             euclideanDistances = torch.pow((distances), 2).sum(axis=1)
             BMUIndex = torch.argmin(euclideanDistances)
-            BMU = self.weights[BMUIndex]
-
-            # Lateral distance between neurons
-            lateralDistances = torch.pow(
-                (self.weights - BMU), 2
-            ).sum(axis=1)
+            BMUGridCoords = (int(BMUIndex/self.gridShape[0]),int(BMUIndex%self.gridShape[0]))
 
             # Update the learning rate
-            alpha = self.ScalarUpdate_Power(self.alpha, epochIndex, self.alphaMaxTime)
-
+            alpha = self.ScalarUpdate(self.alpha, epochIndex, self.alphaMaxTime)
 
             # Update the neighborhood size
-            sigma = self.ScalarUpdate_Power(self.sigma, epochIndex, self.sigmaMaxTime)
-
+            sigma = self.ScalarUpdate(self.sigma, epochIndex, self.sigmaMaxTime)
 
             # Evaluate the topological neighborhood
-            changeRate = self.Neighbourhood_Gaussian(lateralDistances,sigma)
+            changeRate = self.GuassianNeighbourhood(BMUGridCoords,sigma)
 
             maxChange = 0.15
             changeRate[changeRate>maxChange] = maxChange
@@ -102,7 +111,7 @@ class SOM:
                 self.history = torch.cat(
                     (
                         self.history,
-                        self.weights.reshape(1, self.n_points, n_attributes),
+                        self.weights.reshape(1, self.nWeights, n_attributes),
                     ),
                     axis=0,
                 )
