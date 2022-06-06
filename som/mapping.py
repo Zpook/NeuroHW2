@@ -100,10 +100,6 @@ class SOM:
             # Evaluate the topological neighborhood
             changeRate = self.GuassianNeighbourhood(BMUGridCoords,sigma)
 
-            maxChange = 0.15
-            changeRate[changeRate>maxChange] = maxChange
-            changeRate[BMUIndex] = 1
-
             # Update weights
             self.weights += alpha * changeRate * (distances)
 
